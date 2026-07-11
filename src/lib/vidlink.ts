@@ -28,6 +28,25 @@ export function getVidLinkUrl(
   return `${path}?${params.toString()}`;
 }
 
+export function getEmbedUrl(
+  server: 'vidlink' | 'vidsrc' | 'superembed',
+  tmdbId: string,
+  type: 'movie' | 'tv',
+  season?: number,
+  episode?: number,
+  startAt?: number
+): string {
+  if (server === 'vidlink') {
+    return getVidLinkUrl(tmdbId, type, season, episode, startAt);
+  } else if (server === 'vidsrc') {
+    const baseUrl = `https://vidsrc.to/embed/${type}/${tmdbId}`;
+    return type === 'tv' ? `${baseUrl}/${season || 1}/${episode || 1}` : baseUrl;
+  } else {
+    const base = `https://multiembed.to/yt.php?video_id=${tmdbId}`;
+    return type === 'tv' ? `${base}&s=${season || 1}&e=${episode || 1}` : base;
+  }
+}
+
 export function getContinueWatchingList(): ContinueWatchingItem[] {
   try {
     const raw = localStorage.getItem('vidLinkProgress');

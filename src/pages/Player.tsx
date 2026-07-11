@@ -9,7 +9,7 @@ import {
   getTVSeason,
   getBackdropUrl,
 } from '../lib/tmdb';
-import { getVidLinkUrl, setupVidLinkMessageListener } from '../lib/vidlink';
+import { getVidLinkUrl, getEmbedUrl, setupVidLinkMessageListener } from '../lib/vidlink';
 import { CastCard } from '../components/CastCard';
 import { SeasonEpisodeSelector } from '../components/SeasonEpisodeSelector';
 import { EpisodeGrid } from '../components/EpisodeGrid';
@@ -20,6 +20,7 @@ export const Player: React.FC = () => {
   const { type, tmdbId } = useParams<{ type: string; tmdbId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const [selectedServer, setSelectedServer] = useState<'vidlink' | 'vidsrc' | 'superembed'>('vidlink');
 
   // Route parameters parsing
   const mediaId = Number(tmdbId);
@@ -152,7 +153,8 @@ export const Player: React.FC = () => {
     });
   };
 
-  const playUrl = getVidLinkUrl(
+  const playUrl = getEmbedUrl(
+    selectedServer,
     String(tmdbId),
     mediaType,
     mediaType === 'tv' ? season : undefined,
@@ -193,7 +195,42 @@ export const Player: React.FC = () => {
             allowFullScreen
             allow="autoplay; encrypted-media; picture-in-picture"
             title={`${title} Player`}
+            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
           />
+        </div>
+
+        {/* Server Switcher & Security Notice */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-surface-dark/50 border border-white/5 shadow-md">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Select Server:</span>
+            <div className="flex gap-2">
+              {(['vidlink', 'vidsrc', 'superembed'] as const).map((srv) => {
+                const isActive = selectedServer === srv;
+                const nameMap = {
+                  vidlink: 'Server 1 (VidLink)',
+                  vidsrc: 'Server 2 (VidSrc)',
+                  superembed: 'Server 3 (SuperEmbed)',
+                };
+                return (
+                  <button
+                    key={srv}
+                    onClick={() => setSelectedServer(srv)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer ${
+                      isActive
+                        ? 'bg-brand text-white shadow-md shadow-brand/10'
+                        : 'bg-card-dark text-gray-300 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    {nameMap[srv]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="text-[11px] text-gray-400 font-light flex items-center gap-1.5">
+            <span className="text-brand font-bold">🔒 Sandbox Active:</span>
+            <span>Popups and redirects are securely blocked.</span>
+          </div>
         </div>
 
         {/* Info & Browsing Section Below Player */}
