@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { MovieOrShow } from '../types';
 import {
@@ -16,6 +16,9 @@ import { PosterCarousel } from '../components/PosterCarousel';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const filter = searchParams.get('filter') as 'movie' | 'tv' | null;
+
   const [heroMedia, setHeroMedia] = useState<MovieOrShow | null>(null);
   const [recommended, setRecommended] = useState<MovieOrShow[]>([]);
   const [popularMovies, setPopularMovies] = useState<MovieOrShow[]>([]);
@@ -41,13 +44,25 @@ export const Home: React.FC = () => {
 
       const trendingList = trendingRes.results || [];
       
-      // Select a random popular item from trending that has a backdrop
-      const validHeroItems = trendingList.filter(item => item.backdrop_path && item.overview);
-      if (validHeroItems.length > 0) {
-        const randomIndex = Math.floor(Math.random() * Math.min(5, validHeroItems.length));
-        setHeroMedia(validHeroItems[randomIndex]);
-      } else if (trendingList.length > 0) {
-        setHeroMedia(trendingList[0]);
+      // Select a random popular item based on filter
+      if (filter === 'movie') {
+        const validMovies = (popularMoviesRes.results || []).filter(item => item.backdrop_path && item.overview);
+        if (validMovies.length > 0) {
+          setHeroMedia(validMovies[Math.floor(Math.random() * Math.min(5, validMovies.length))]);
+        }
+      } else if (filter === 'tv') {
+        const validTVs = (popularTVRes.results || []).filter(item => item.backdrop_path && item.overview);
+        if (validTVs.length > 0) {
+          setHeroMedia(validTVs[Math.floor(Math.random() * Math.min(5, validTVs.length))]);
+        }
+      } else {
+        const validHeroItems = trendingList.filter(item => item.backdrop_path && item.overview);
+        if (validHeroItems.length > 0) {
+          const randomIndex = Math.floor(Math.random() * Math.min(5, validHeroItems.length));
+          setHeroMedia(validHeroItems[randomIndex]);
+        } else if (trendingList.length > 0) {
+          setHeroMedia(trendingList[0]);
+        }
       }
 
       setPopularMovies(popularMoviesRes.results || []);
@@ -69,7 +84,7 @@ export const Home: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, [refreshKey]);
+  }, [refreshKey, filter]);
 
   const handlePlayHero = () => {
     if (!heroMedia) return;
@@ -125,38 +140,44 @@ export const Home: React.FC = () => {
       {/* Rows Container */}
       <div className="relative z-20 -mt-8 sm:-mt-12 md:-mt-20">
         {/* Continue Watching Row */}
-        <ContinueWatchingRow onRefreshNeeded={handleRefresh} />
+        <ContinueWatchingRow filter={filter} onRefreshNeeded={handleRefresh} />
 
         {/* Recommended For You */}
         <PosterCarousel
           title="Recommended For You"
-          items={recommended}
+          items={recommended.filter(item => !filter || item.media_type === filter || (filter === 'movie' && item.title) || (filter === 'tv' && item.name))}
           isLoading={isLoading}
         />
 
         {/* Popular Movies */}
-        <PosterCarousel
-          title="Popular Movies"
-          items={popularMovies}
-          fallbackMediaType="movie"
-          isLoading={isLoading}
-        />
+        {(!filter || filter === 'movie') && (
+          <PosterCarousel
+            title="Popular Movies"
+            items={popularMovies}
+            fallbackMediaType="movie"
+            isLoading={isLoading}
+          />
+        )}
 
         {/* Popular TV Shows */}
-        <PosterCarousel
-          title="Popular TV Shows"
-          items={popularTV}
-          fallbackMediaType="tv"
-          isLoading={isLoading}
-        />
+        {(!filter || filter === 'tv') && (
+          <PosterCarousel
+            title="Popular TV Shows"
+            items={popularTV}
+            fallbackMediaType="tv"
+            isLoading={isLoading}
+          />
+        )}
 
         {/* Top Rated */}
-        <PosterCarousel
-          title="Top Rated Movies"
-          items={topRated}
-          fallbackMediaType="movie"
-          isLoading={isLoading}
-        />
+        {(!filter || filter === 'movie') && (
+          <PosterCarousel
+            title="Top Rated Movies"
+            items={topRated}
+            fallbackMediaType="movie"
+            isLoading={isLoading}
+          />
+        )}
       </div>
     </motion.div>
   );

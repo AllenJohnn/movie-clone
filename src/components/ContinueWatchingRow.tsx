@@ -7,17 +7,19 @@ import { getContinueWatchingList, removeContinueWatchingItem } from '../lib/vidl
 import { getBackdropUrl } from '../lib/tmdb';
 
 interface ContinueWatchingRowProps {
+  filter?: 'movie' | 'tv' | null;
   onRefreshNeeded?: () => void;
 }
 
-export const ContinueWatchingRow: React.FC<ContinueWatchingRowProps> = ({ onRefreshNeeded }) => {
+export const ContinueWatchingRow: React.FC<ContinueWatchingRowProps> = ({ filter, onRefreshNeeded }) => {
   const navigate = useNavigate();
   const [items, setItems] = useState<ContinueWatchingItem[]>([]);
 
   const loadItems = () => {
     const list = getContinueWatchingList();
+    const filtered = filter ? list.filter(item => item.type === filter) : list;
     // Sort by lastUpdated desc
-    const sorted = list.sort((a, b) => b.lastUpdated - a.lastUpdated);
+    const sorted = filtered.sort((a, b) => b.lastUpdated - a.lastUpdated);
     setItems(sorted);
   };
 
@@ -33,7 +35,7 @@ export const ContinueWatchingRow: React.FC<ContinueWatchingRowProps> = ({ onRefr
     
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+  }, [filter]);
 
   const handleRemove = (e: React.MouseEvent, tmdbId: string, type: 'movie' | 'tv') => {
     e.stopPropagation();

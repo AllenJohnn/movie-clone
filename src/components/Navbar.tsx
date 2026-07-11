@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, Link } from 'react-router-dom';
+import { Menu } from 'lucide-react';
 
-export const Navbar: React.FC = () => {
+interface NavbarProps {
+  onMenuClick: () => void;
+}
+
+export const Navbar: React.FC<NavbarProps> = ({ onMenuClick }) => {
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
@@ -19,10 +24,19 @@ export const Navbar: React.FC = () => {
       }`}
     >
       <div className="max-w-[1400px] mx-auto px-6 md:px-12 flex items-center justify-between">
-        <div className="flex items-center gap-10">
+        <div className="flex items-center gap-4 sm:gap-10">
+          {/* Hamburger Menu Toggle Button */}
+          <button
+            onClick={onMenuClick}
+            className="p-1 text-gray-400 hover:text-white transition-colors cursor-pointer select-none"
+            aria-label="Open navigation sidebar"
+          >
+            <Menu size={22} />
+          </button>
+
           {/* Minimalist Logo */}
           <Link to="/" className="flex items-center gap-2 select-none cursor-pointer">
-            <span className="font-extrabold text-2xl tracking-tighter text-brand">
+            <span className="font-extrabold text-xl sm:text-2xl tracking-tighter text-brand">
               VIDFLIX
             </span>
           </Link>

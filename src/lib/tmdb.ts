@@ -11,7 +11,7 @@ async function fetchFromTMDB<T>(endpoint: string, params: Record<string, string>
 
   const queryParams = new URLSearchParams({
     api_key: apiKey || '',
-    language: 'en-US',
+    language: localStorage.getItem('flixLanguage') || 'en-US',
     ...params
   });
   

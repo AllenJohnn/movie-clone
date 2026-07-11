@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { Navbar } from './components/Navbar';
+import { Sidebar } from './components/Sidebar';
 import { Home } from './pages/Home';
 import { Search } from './pages/Search';
 import { Details } from './pages/Details';
@@ -24,10 +26,13 @@ function AnimatedRoutes() {
 }
 
 function App() {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   return (
     <Router>
       <div className="min-h-screen bg-bg-dark text-white flex flex-col font-sans selection:bg-brand selection:text-white">
-        <Navbar />
+        <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+        <Navbar onMenuClick={() => setIsSidebarOpen(true)} />
         <main className="flex-grow">
           <AnimatedRoutes />
         </main>
