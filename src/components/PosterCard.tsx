@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Star } from 'lucide-react';
 import { MovieOrShow } from '../types';
 import { getPosterUrl } from '../lib/tmdb';
@@ -12,7 +11,6 @@ interface PosterCardProps {
 
 export const PosterCard: React.FC<PosterCardProps> = ({ media, fallbackMediaType }) => {
   const navigate = useNavigate();
-  const [isHovered, setIsHovered] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
   const mediaType = media.media_type || fallbackMediaType || (media.title ? 'movie' : 'tv');
@@ -28,71 +26,54 @@ export const PosterCard: React.FC<PosterCardProps> = ({ media, fallbackMediaType
   };
 
   return (
-    <motion.div
+    <div
       onClick={handleClick}
-      onHoverStart={() => setIsHovered(true)}
-      onHoverEnd={() => setIsHovered(false)}
-      className="relative flex-none w-[160px] sm:w-[180px] md:w-[200px] aspect-[2/3] rounded-xl overflow-hidden cursor-pointer group bg-surface-dark/40 border border-white/5 shadow-lg select-none"
-      whileHover={{ y: -8, scale: 1.05 }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
+      className="relative flex-none w-[155px] sm:w-[175px] md:w-[195px] aspect-[2/3] rounded-xl overflow-hidden cursor-pointer group bg-[#111317] border border-white/5 hover:border-brand/35 hover-glow transition-all duration-300 shadow-md select-none"
     >
-      {/* Poster Image or Fallback */}
-      {posterPath ? (
-        <>
-          {!imageLoaded && (
-            <div className="absolute inset-0 animate-shimmer bg-card-dark" />
-          )}
-          <img
-            src={posterPath}
-            alt={title}
-            loading="lazy"
-            onLoad={() => setImageLoaded(true)}
-            className={`w-full h-full object-cover transition-opacity duration-300 ${
-              imageLoaded ? 'opacity-100' : 'opacity-0'
-            }`}
-          />
-        </>
-      ) : (
-        <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-gradient-to-br from-card-dark to-surface-dark text-center">
-          <span className="text-sm font-semibold text-gray-400 line-clamp-3">{title}</span>
-          <span className="text-xs text-gray-500 mt-2 capitalize">{mediaType}</span>
-        </div>
-      )}
-
-      {/* Card Border Highlight */}
-      <div className="absolute inset-0 border border-white/0 group-hover:border-brand/40 rounded-xl transition-colors duration-300 pointer-events-none" />
-
-      {/* Hover Info Overlay */}
-      <AnimatePresence>
-        {isHovered && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            transition={{ duration: 0.2 }}
-            className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent flex flex-col justify-end p-4 pointer-events-none"
-          >
-            <h3 className="font-bold text-white text-sm sm:text-base line-clamp-2 mb-1 drop-shadow-md">
-              {title}
-            </h3>
-            
-            <div className="flex items-center gap-3 text-xs text-gray-300">
-              {year && <span>{year}</span>}
-              <div className="flex items-center gap-1 font-semibold text-brand">
-                <Star size={12} fill="currentColor" />
-                <span>{rating}</span>
-              </div>
-              <span className="uppercase text-[10px] tracking-wider px-1.5 py-0.5 rounded bg-white/10 font-bold">
-                {mediaType}
-              </span>
-            </div>
-            
-            <p className="text-[10px] text-gray-400 line-clamp-2 mt-2 font-light">
-              {media.overview || 'No overview available.'}
-            </p>
-          </motion.div>
+      {/* Poster Image Container */}
+      <div className="w-full h-full relative overflow-hidden">
+        {posterPath ? (
+          <>
+            {!imageLoaded && (
+              <div className="absolute inset-0 animate-shimmer bg-card-dark" />
+            )}
+            <img
+              src={posterPath}
+              alt={title}
+              loading="lazy"
+              onLoad={() => setImageLoaded(true)}
+              className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-106 ${
+                imageLoaded ? 'opacity-100' : 'opacity-0'
+              }`}
+            />
+          </>
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-gradient-to-br from-card-dark to-surface-dark text-center">
+            <span className="text-sm font-semibold text-gray-400 line-clamp-3">{title}</span>
+            <span className="text-xs text-gray-500 mt-2 capitalize">{mediaType}</span>
+          </div>
         )}
-      </AnimatePresence>
-    </motion.div>
+      </div>
+
+      {/* Minimal Footer Info (Fades in on hover) */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent flex flex-col justify-end p-3.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+        <h3 className="font-bold text-white text-xs sm:text-sm line-clamp-2 mb-1">
+          {title}
+        </h3>
+        
+        <div className="flex items-center justify-between text-[10px] text-gray-400 font-semibold mt-1">
+          <div className="flex items-center gap-2">
+            {year && <span>{year}</span>}
+            <span className="uppercase text-[9px] tracking-wider px-1.5 py-0.5 rounded bg-white/10 text-white font-bold">
+              {mediaType}
+            </span>
+          </div>
+          <div className="flex items-center gap-0.5 text-yellow-500">
+            <Star size={10} fill="currentColor" />
+            <span>{rating}</span>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };

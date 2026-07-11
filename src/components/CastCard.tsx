@@ -22,11 +22,11 @@ export const CastCard: React.FC<CastCardProps> = ({ person }) => {
   return (
     <motion.div
       onClick={handleClick}
-      whileHover={{ y: -6, scale: 1.04 }}
-      className="flex-none w-[110px] sm:w-[130px] md:w-[140px] bg-card-dark/60 rounded-xl overflow-hidden cursor-pointer border border-white/5 shadow-md flex flex-col"
+      whileHover={{ scale: 1.05 }}
+      className="flex-none flex flex-col items-center text-center w-[85px] sm:w-[105px] md:w-[115px] cursor-pointer group"
     >
-      {/* Profile Photo */}
-      <div className="aspect-[3/4] w-full bg-surface-dark relative overflow-hidden">
+      {/* Circular Profile Photo */}
+      <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-22 md:h-22 rounded-full overflow-hidden bg-surface-dark relative border border-white/5 group-hover:border-brand/40 transition-colors duration-300 shadow-md">
         {profilePath ? (
           <>
             {!imageLoaded && (
@@ -37,24 +37,24 @@ export const CastCard: React.FC<CastCardProps> = ({ person }) => {
               alt={person.name}
               loading="lazy"
               onLoad={() => setImageLoaded(true)}
-              className={`w-full h-full object-cover transition-opacity duration-300 ${
+              className={`w-full h-full object-cover transition-all duration-300 group-hover:scale-106 ${
                 imageLoaded ? 'opacity-100' : 'opacity-0'
               }`}
             />
           </>
         ) : (
-          <div className="w-full h-full flex items-center justify-center p-3 text-center bg-gradient-to-br from-card-dark to-surface-dark text-gray-500 font-bold text-xs select-none">
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-card-dark to-surface-dark text-gray-500 font-bold text-xs select-none">
             {person.name.split(' ').map(n => n[0]).join('')}
           </div>
         )}
       </div>
 
-      {/* Info */}
-      <div className="p-2 flex-grow flex flex-col justify-start">
-        <h4 className="font-semibold text-xs sm:text-sm text-white line-clamp-1">
+      {/* Centered Profile Text */}
+      <div className="flex flex-col items-center mt-2.5 w-full">
+        <h4 className="font-semibold text-xs text-white line-clamp-1 group-hover:text-brand transition-colors duration-200">
           {person.name}
         </h4>
-        <p className="text-[10px] sm:text-xs text-gray-400 line-clamp-2 mt-0.5 leading-tight font-light">
+        <p className="text-[9px] sm:text-[10px] text-gray-400 line-clamp-2 mt-0.5 leading-tight font-light w-full">
           {character}
         </p>
       </div>

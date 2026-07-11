@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Star } from 'lucide-react';
+import { Play, Star, Calendar } from 'lucide-react';
 import { Episode } from '../types';
 import { getStillUrl } from '../lib/tmdb';
 
@@ -20,13 +20,9 @@ export const EpisodeGrid: React.FC<EpisodeGridProps> = ({
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {[...Array(8)].map((_, i) => (
-          <div key={i} className="flex flex-col gap-2">
-            <div className="aspect-video w-full rounded-xl bg-card-dark animate-shimmer" />
-            <div className="h-4 w-3/4 rounded bg-card-dark animate-shimmer" />
-            <div className="h-3 w-full rounded bg-card-dark animate-shimmer" />
-          </div>
+      <div className="flex flex-col gap-4">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="flex flex-col md:flex-row gap-4 p-4 rounded-xl bg-surface-dark animate-shimmer h-[120px]" />
         ))}
       </div>
     );
@@ -34,14 +30,14 @@ export const EpisodeGrid: React.FC<EpisodeGridProps> = ({
 
   if (!episodes || episodes.length === 0) {
     return (
-      <div className="py-8 text-center text-gray-500">
+      <div className="py-8 text-center text-gray-500 font-light">
         No episodes found for this season.
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 select-none">
+    <div className="flex flex-col gap-4 select-none">
       {episodes.map((episode) => {
         const isSelected = episode.episode_number === selectedEpisode;
         const stillUrl = getStillUrl(episode.still_path);
@@ -52,10 +48,14 @@ export const EpisodeGrid: React.FC<EpisodeGridProps> = ({
           <div
             key={episode.id}
             onClick={() => onEpisodeSelect(episode.episode_number, episode.name)}
-            className="group flex flex-col bg-surface-dark/40 border border-white/5 rounded-xl overflow-hidden cursor-pointer hover:border-brand/40 transition-all duration-300 shadow-md"
+            className={`group flex flex-col md:flex-row gap-5 p-4 rounded-xl cursor-pointer transition-all duration-300 border ${
+              isSelected
+                ? 'bg-brand/10 border-brand shadow-lg'
+                : 'bg-surface-dark/30 hover:bg-surface-dark/70 border-white/5 hover:border-white/10'
+            }`}
           >
-            {/* Thumbnail 16:9 */}
-            <div className="relative aspect-video w-full bg-card-dark overflow-hidden">
+            {/* 16:9 Episode Thumbnail (Left) */}
+            <div className="relative aspect-video w-full md:w-[220px] rounded-lg overflow-hidden bg-card-dark flex-none">
               {stillUrl && !hasError ? (
                 <img
                   src={stillUrl}
@@ -65,53 +65,57 @@ export const EpisodeGrid: React.FC<EpisodeGridProps> = ({
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center p-4 bg-gradient-to-br from-card-dark to-surface-dark text-gray-600 font-bold text-lg select-none">
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-card-dark to-surface-dark text-gray-600 font-bold text-xs">
                   EPISODE {episode.episode_number}
                 </div>
               )}
 
-              {/* Shading Overlays */}
-              <div className={`absolute inset-0 bg-black/35 group-hover:bg-black/50 transition-colors duration-300 flex items-center justify-center ${
-                isSelected ? 'bg-black/60 border-2 border-brand rounded-t-xl' : ''
+              {/* Play Overlay */}
+              <div className={`absolute inset-0 bg-black/40 group-hover:bg-black/55 transition-colors flex items-center justify-center ${
+                isSelected ? 'bg-black/60' : 'opacity-0 group-hover:opacity-100'
               }`}>
-                {/* Play Button Overlay */}
-                <div className={`w-10 h-10 rounded-full bg-brand flex items-center justify-center shadow-lg transition-transform duration-300 ${
-                  isSelected ? 'scale-100 opacity-100' : 'scale-75 opacity-0 group-hover:scale-100 group-hover:opacity-100'
-                }`}>
+                <div className="w-10 h-10 rounded-full bg-brand flex items-center justify-center shadow-md transform scale-90 group-hover:scale-100 transition-transform">
                   <Play size={16} fill="currentColor" className="text-white ml-0.5" />
                 </div>
               </div>
 
-              {/* Rating Badge */}
-              {rating && (
-                <div className="absolute bottom-2 right-2 flex items-center gap-1 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-sm text-[10px] font-bold text-brand border border-white/5">
-                  <Star size={10} fill="currentColor" />
-                  <span>{rating}</span>
-                </div>
-              )}
+              {/* Episode Number Tag */}
+              <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/70 backdrop-blur-sm text-[10px] font-bold text-white tracking-wide border border-white/5">
+                EP {episode.episode_number}
+              </div>
             </div>
 
-            {/* Info */}
-            <div className="p-3.5 flex-grow flex flex-col">
-              <div className="flex items-start justify-between gap-2 mb-1.5">
-                <h4 className={`font-semibold text-sm line-clamp-1 group-hover:text-brand transition-colors ${
-                  isSelected ? 'text-brand' : 'text-white'
+            {/* Info details (Right) */}
+            <div className="flex-grow flex flex-col justify-start text-left">
+              <div className="flex flex-wrap items-start justify-between gap-2 mb-1.5">
+                <h4 className={`font-bold text-base transition-colors ${
+                  isSelected ? 'text-brand' : 'text-white group-hover:text-brand'
                 }`}>
-                  {episode.episode_number}. {episode.name}
+                  {episode.name}
                 </h4>
+                
+                {rating && (
+                  <div className="flex items-center gap-1 text-xs font-semibold text-yellow-500">
+                    <Star size={12} fill="currentColor" />
+                    <span>{rating}</span>
+                  </div>
+                )}
               </div>
 
               {episode.air_date && (
-                <span className="text-[10px] text-gray-500 font-medium tracking-wide block mb-2">
-                  {new Date(episode.air_date).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  })}
-                </span>
+                <div className="flex items-center gap-1.5 text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-2">
+                  <Calendar size={10} />
+                  <span>
+                    {new Date(episode.air_date).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </span>
+                </div>
               )}
 
-              <p className="text-xs text-gray-400 font-light line-clamp-3 leading-relaxed mt-auto">
+              <p className="text-xs sm:text-sm text-gray-400 font-light leading-relaxed line-clamp-2 md:line-clamp-3">
                 {episode.overview || 'No description available for this episode.'}
               </p>
             </div>
