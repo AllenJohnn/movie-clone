@@ -309,7 +309,6 @@ export const Player: React.FC = () => {
             allowFullScreen
             allow="autoplay; encrypted-media; picture-in-picture"
             title={`${title} Player`}
-            sandbox="allow-scripts allow-same-origin allow-presentation"
           />
         </div>
 
@@ -340,8 +339,8 @@ export const Player: React.FC = () => {
             </div>
           </div>
           <div className="text-[11px] text-gray-400 font-light flex items-center gap-1.5">
-            <span className="text-brand font-bold">🔒 Sandbox Active:</span>
-            <span>Popups and redirects are securely blocked.</span>
+            <span className="text-brand font-bold">⚡ Unrestricted Playback:</span>
+            <span>Compatibility mode active.</span>
           </div>
         </div>
 
