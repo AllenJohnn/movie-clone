@@ -1,40 +1,23 @@
 import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Film, Tv, Home, Globe, TrendingUp, History } from 'lucide-react';
+import { X, Film, Tv, Home } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const LANGUAGES = [
-  { code: 'en-US', name: 'English (US)' },
-  { code: 'es-ES', name: 'Español (ES)' },
-  { code: 'fr-FR', name: 'Français (FR)' },
-  { code: 'de-DE', name: 'Deutsch (DE)' },
-  { code: 'hi-IN', name: 'हिन्दी (IN)' },
-  { code: 'ja-JP', name: '日本語 (JP)' },
-];
-
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   
   const currentFilter = searchParams.get('filter') || 'all';
-  const currentLang = localStorage.getItem('flixLanguage') || 'en-US';
 
   const handleFilterClick = (filter: 'all' | 'movie' | 'tv') => {
     // Navigate home if we aren't there, and apply the filter query param
     navigate(filter === 'all' ? '/' : `/?filter=${filter}`);
     onClose();
-  };
-
-  const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedLang = e.target.value;
-    localStorage.setItem('flixLanguage', selectedLang);
-    // Reload the page to refresh all TMDB cached fetch queries with the new language
-    window.location.reload();
   };
 
   return (
@@ -62,7 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             <div className="flex flex-col gap-8">
               <div className="flex items-center justify-between">
                 <span className="font-extrabold text-2xl tracking-tighter text-brand">
-                  VIDFLIX
+                  AETHER
                 </span>
                 <button
                   onClick={onClose}
@@ -73,7 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               </div>
 
               {/* Navigation Group */}
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2 text-left">
                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-3 mb-1">
                   Navigation
                 </span>
@@ -119,38 +102,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               </div>
             </div>
 
-            {/* Language & Settings Footer */}
-            <div className="flex flex-col gap-4 border-t border-white/5 pt-6">
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-1">
-                Preferences
-              </span>
-              
-              {/* Globe Language Selector */}
-              <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                  <Globe size={16} />
-                </div>
-                
-                <select
-                  value={currentLang}
-                  onChange={handleLanguageChange}
-                  className="w-full pl-10 pr-8 py-2.5 rounded-lg bg-surface-dark border border-white/5 hover:border-white/10 focus:border-brand/40 text-gray-300 font-medium text-xs tracking-wide focus:outline-none appearance-none cursor-pointer"
-                >
-                  {LANGUAGES.map((lang) => (
-                    <option key={lang.code} value={lang.code}>
-                      {lang.name}
-                    </option>
-                  ))}
-                </select>
-                
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 text-[10px]">
-                  ▼
-                </div>
-              </div>
-
-              <div className="text-[10px] text-gray-500 font-light px-1">
-                Content language updates dynamic metadata from TMDB.
-              </div>
+            {/* Footer */}
+            <div className="text-[10px] text-gray-500 font-light text-center border-t border-white/5 pt-4">
+              © {new Date().getFullYear()} Aether Player
             </div>
           </motion.div>
         </>

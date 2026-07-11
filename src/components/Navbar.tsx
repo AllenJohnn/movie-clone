@@ -37,7 +37,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onMenuClick }) => {
           {/* Minimalist Logo */}
           <Link to="/" className="flex items-center gap-2 select-none cursor-pointer">
             <span className="font-extrabold text-xl sm:text-2xl tracking-tighter text-brand">
-              VIDFLIX
+              AETHER
             </span>
           </Link>
 
