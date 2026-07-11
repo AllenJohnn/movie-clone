@@ -7,9 +7,12 @@ import {
   getPopularMovies,
   getPopularTVShows,
   getTopRated,
-  getRecommendedForYou,
+  getRecommendationsWithSource,
+  getMovieGenres,
+  discoverMedia,
 } from '../lib/tmdb';
 import { getContinueWatchingList } from '../lib/vidlink';
+import { getWatchlist } from '../lib/watchlist';
 import { Hero } from '../components/Hero';
 import { ContinueWatchingRow } from '../components/ContinueWatchingRow';
 import { PosterCarousel } from '../components/PosterCarousel';
@@ -18,12 +21,16 @@ export const Home: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const filter = searchParams.get('filter') as 'movie' | 'tv' | null;
+  const genreId = searchParams.get('genre');
 
   const [heroMedia, setHeroMedia] = useState<MovieOrShow | null>(null);
   const [recommended, setRecommended] = useState<MovieOrShow[]>([]);
+  const [recommendationSource, setRecommendationSource] = useState<string>('');
+  const [watchlistItems, setWatchlistItems] = useState<MovieOrShow[]>([]);
   const [popularMovies, setPopularMovies] = useState<MovieOrShow[]>([]);
   const [popularTV, setPopularTV] = useState<MovieOrShow[]>([]);
   const [topRated, setTopRated] = useState<MovieOrShow[]>([]);
+  const [genreName, setGenreName] = useState<string>('');
   
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,45 +41,81 @@ export const Home: React.FC = () => {
       setIsLoading(true);
       setError(null);
 
-      // Fetch trending, popular movies, popular tv, and top rated in parallel
-      const [trendingRes, popularMoviesRes, popularTVRes, topRatedRes] = await Promise.all([
-        getTrending('all', 'week'),
-        getPopularMovies(),
-        getPopularTVShows(),
-        getTopRated(),
-      ]);
+      // Load watchlist items
+      const watchlist = getWatchlist();
+      setWatchlistItems(watchlist);
 
-      const trendingList = trendingRes.results || [];
-      
-      // Select a random popular item based on filter
-      if (filter === 'movie') {
-        const validMovies = (popularMoviesRes.results || []).filter(item => item.backdrop_path && item.overview);
-        if (validMovies.length > 0) {
-          setHeroMedia(validMovies[Math.floor(Math.random() * Math.min(5, validMovies.length))]);
-        }
-      } else if (filter === 'tv') {
-        const validTVs = (popularTVRes.results || []).filter(item => item.backdrop_path && item.overview);
-        if (validTVs.length > 0) {
-          setHeroMedia(validTVs[Math.floor(Math.random() * Math.min(5, validTVs.length))]);
-        }
-      } else {
-        const validHeroItems = trendingList.filter(item => item.backdrop_path && item.overview);
-        if (validHeroItems.length > 0) {
-          const randomIndex = Math.floor(Math.random() * Math.min(5, validHeroItems.length));
-          setHeroMedia(validHeroItems[randomIndex]);
-        } else if (trendingList.length > 0) {
-          setHeroMedia(trendingList[0]);
-        }
-      }
-
-      setPopularMovies(popularMoviesRes.results || []);
-      setPopularTV(popularTVRes.results || []);
-      setTopRated(topRatedRes.results || []);
-
-      // Fetch recommended for you (depends on local storage history)
       const history = getContinueWatchingList();
-      const recommendedList = await getRecommendedForYou(history);
-      setRecommended(recommendedList);
+
+      if (genreId) {
+        // Fetch genre catalogs to find the name of the genre
+        const genresRes = await getMovieGenres();
+        const activeGenre = genresRes.genres?.find(g => String(g.id) === genreId);
+        setGenreName(activeGenre ? activeGenre.name : 'Genre');
+
+        // Fetch discover movies/TV for this genre
+        const [discoverMoviesRes, discoverTVRes] = await Promise.all([
+          discoverMedia('movie', genreId),
+          discoverMedia('tv', genreId),
+        ]);
+
+        const moviesList = discoverMoviesRes.results || [];
+        const tvList = discoverTVRes.results || [];
+
+        setPopularMovies(moviesList);
+        setPopularTV(tvList);
+        setTopRated([]); // Reset top rated during genre browsing
+        setRecommended([]); // Disable recommendations in genre mode
+
+        // Select hero from genre movies
+        const validHeroItems = moviesList.filter(item => item.backdrop_path && item.overview);
+        if (validHeroItems.length > 0) {
+          setHeroMedia(validHeroItems[Math.floor(Math.random() * Math.min(5, validHeroItems.length))]);
+        } else if (moviesList.length > 0) {
+          setHeroMedia(moviesList[0]);
+        }
+
+      } else {
+        // Standard Browse All / Movies / TV shows
+        setGenreName('');
+        
+        const [trendingRes, popularMoviesRes, popularTVRes, topRatedRes, recsRes] = await Promise.all([
+          getTrending('all', 'week'),
+          getPopularMovies(),
+          getPopularTVShows(),
+          getTopRated(),
+          getRecommendationsWithSource(history),
+        ]);
+
+        const trendingList = trendingRes.results || [];
+        
+        // Select Hero
+        if (filter === 'movie') {
+          const validMovies = (popularMoviesRes.results || []).filter(item => item.backdrop_path && item.overview);
+          if (validMovies.length > 0) {
+            setHeroMedia(validMovies[Math.floor(Math.random() * Math.min(5, validMovies.length))]);
+          }
+        } else if (filter === 'tv') {
+          const validTVs = (popularTVRes.results || []).filter(item => item.backdrop_path && item.overview);
+          if (validTVs.length > 0) {
+            setHeroMedia(validTVs[Math.floor(Math.random() * Math.min(5, validTVs.length))]);
+          }
+        } else {
+          const validHeroItems = trendingList.filter(item => item.backdrop_path && item.overview);
+          if (validHeroItems.length > 0) {
+            const randomIndex = Math.floor(Math.random() * Math.min(5, validHeroItems.length));
+            setHeroMedia(validHeroItems[randomIndex]);
+          } else if (trendingList.length > 0) {
+            setHeroMedia(trendingList[0]);
+          }
+        }
+
+        setPopularMovies(popularMoviesRes.results || []);
+        setPopularTV(popularTVRes.results || []);
+        setTopRated(topRatedRes.results || []);
+        setRecommended(recsRes.results || []);
+        setRecommendationSource(recsRes.sourceTitle || '');
+      }
 
     } catch (err: any) {
       console.error('Error fetching home page data:', err);
@@ -84,7 +127,7 @@ export const Home: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, [refreshKey, filter]);
+  }, [refreshKey, filter, genreId]);
 
   const handlePlayHero = () => {
     if (!heroMedia) return;
@@ -99,7 +142,7 @@ export const Home: React.FC = () => {
   };
 
   const handleRefresh = () => {
-    // Force refresh recommended row when history is cleared
+    // Force refresh rows when items are modified
     setRefreshKey(prev => prev + 1);
   };
 
@@ -142,27 +185,38 @@ export const Home: React.FC = () => {
         {/* Continue Watching Row */}
         <ContinueWatchingRow filter={filter} onRefreshNeeded={handleRefresh} />
 
-        {/* Recommended For You */}
-        <PosterCarousel
-          title="Recommended For You"
-          items={recommended.filter(item => !filter || item.media_type === filter || (filter === 'movie' && item.title) || (filter === 'tv' && item.name))}
-          isLoading={isLoading}
-        />
-
-        {/* Popular Movies */}
-        {(!filter || filter === 'movie') && (
+        {/* My List Row */}
+        {!genreId && watchlistItems.length > 0 && (
           <PosterCarousel
-            title="Popular Movies"
+            title="My List"
+            items={watchlistItems}
+            isLoading={isLoading}
+          />
+        )}
+
+        {/* Recommended For You */}
+        {!genreId && recommended.length > 0 && (
+          <PosterCarousel
+            title={recommendationSource ? `Recommended: Because you watched ${recommendationSource}` : 'Recommended For You'}
+            items={recommended}
+            isLoading={isLoading}
+          />
+        )}
+
+        {/* Popular Movies (or Genre Movies) */}
+        {(!filter || filter === 'movie') && popularMovies.length > 0 && (
+          <PosterCarousel
+            title={genreName ? `${genreName} Movies` : 'Popular Movies'}
             items={popularMovies}
             fallbackMediaType="movie"
             isLoading={isLoading}
           />
         )}
 
-        {/* Popular TV Shows */}
-        {(!filter || filter === 'tv') && (
+        {/* Popular TV Shows (or Genre TV Shows) */}
+        {(!filter || filter === 'tv') && popularTV.length > 0 && (
           <PosterCarousel
-            title="Popular TV Shows"
+            title={genreName ? `${genreName} TV Shows` : 'Popular TV Shows'}
             items={popularTV}
             fallbackMediaType="tv"
             isLoading={isLoading}
@@ -170,7 +224,7 @@ export const Home: React.FC = () => {
         )}
 
         {/* Top Rated */}
-        {(!filter || filter === 'movie') && (
+        {!genreId && (!filter || filter === 'movie') && topRated.length > 0 && (
           <PosterCarousel
             title="Top Rated Movies"
             items={topRated}

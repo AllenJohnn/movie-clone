@@ -8,6 +8,7 @@ import { Search } from './pages/Search';
 import { Details } from './pages/Details';
 import { Person } from './pages/Person';
 import { Player } from './pages/Player';
+import { Watchlist } from './pages/Watchlist';
 import './App.css';
 
 function AnimatedRoutes() {
@@ -20,6 +21,7 @@ function AnimatedRoutes() {
         <Route path="/details/:type/:id" element={<Details />} />
         <Route path="/person/:id" element={<Person />} />
         <Route path="/player/:type/:tmdbId" element={<Player />} />
+        <Route path="/watchlist" element={<Watchlist />} />
       </Routes>
     </AnimatePresence>
   );

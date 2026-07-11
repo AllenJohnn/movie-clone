@@ -1,17 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Star } from 'lucide-react';
+import { Star, Plus, Check } from 'lucide-react';
 import { MovieOrShow } from '../types';
 import { getPosterUrl } from '../lib/tmdb';
+import { isInWatchlist, addToWatchlist, removeFromWatchlist } from '../lib/watchlist';
+import { getCachedColor } from '../lib/colors';
 
 interface PosterCardProps {
   media: MovieOrShow;
   fallbackMediaType?: 'movie' | 'tv';
+  isHighlighted?: boolean;
 }
 
-export const PosterCard: React.FC<PosterCardProps> = ({ media, fallbackMediaType }) => {
+export const PosterCard: React.FC<PosterCardProps> = ({
+  media,
+  fallbackMediaType,
+  isHighlighted = false,
+}) => {
   const navigate = useNavigate();
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [inWatchlist, setInWatchlist] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const mediaType = media.media_type || fallbackMediaType || (media.title ? 'movie' : 'tv');
   const title = media.title || media.name || media.original_title || media.original_name || 'Untitled';
@@ -21,14 +30,45 @@ export const PosterCard: React.FC<PosterCardProps> = ({ media, fallbackMediaType
   const rating = media.vote_average ? media.vote_average.toFixed(1) : 'N/A';
   const posterPath = getPosterUrl(media.poster_path);
 
+  // Cache key and ambient color lookup
+  const cacheKey = `${media.id}_${mediaType}`;
+  const accentColor = getCachedColor(cacheKey);
+
+  useEffect(() => {
+    setInWatchlist(isInWatchlist(media.id));
+  }, [media.id]);
+
   const handleClick = () => {
     navigate(`/details/${mediaType}/${media.id}`);
+  };
+
+  const handleWatchlistClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card navigation
+    if (inWatchlist) {
+      removeFromWatchlist(media.id);
+      setInWatchlist(false);
+    } else {
+      addToWatchlist({ ...media, media_type: mediaType as 'movie' | 'tv' });
+      setInWatchlist(true);
+    }
+  };
+
+  // Border & Glow inline styling
+  const isActive = isHighlighted || isHovered;
+  const cardStyle: React.CSSProperties = {
+    borderColor: isActive ? accentColor : undefined,
+    boxShadow: isActive ? `0 10px 30px -10px ${accentColor}66` : undefined,
   };
 
   return (
     <div
       onClick={handleClick}
-      className="relative flex-none w-[155px] sm:w-[175px] md:w-[195px] aspect-[2/3] rounded-xl overflow-hidden cursor-pointer group bg-[#111317] border border-white/5 hover:border-brand/35 hover-glow transition-all duration-300 shadow-md select-none"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={cardStyle}
+      className={`relative flex-none w-[155px] sm:w-[175px] md:w-[195px] aspect-[2/3] rounded-xl overflow-hidden cursor-pointer bg-[#111317] border border-white/5 transition-all duration-300 shadow-md select-none ${
+        isHighlighted ? 'scale-104' : ''
+      }`}
     >
       {/* Poster Image Container */}
       <div className="w-full h-full relative overflow-hidden">
@@ -44,7 +84,7 @@ export const PosterCard: React.FC<PosterCardProps> = ({ media, fallbackMediaType
               onLoad={() => setImageLoaded(true)}
               className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-106 ${
                 imageLoaded ? 'opacity-100' : 'opacity-0'
-              }`}
+              } ${isHovered ? 'scale-106' : ''}`}
             />
           </>
         ) : (
@@ -55,8 +95,26 @@ export const PosterCard: React.FC<PosterCardProps> = ({ media, fallbackMediaType
         )}
       </div>
 
-      {/* Minimal Footer Info (Fades in on hover) */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent flex flex-col justify-end p-3.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+      {/* Watchlist Toggle Button (Top Right) */}
+      <button
+        onClick={handleWatchlistClick}
+        style={{ backgroundColor: inWatchlist ? `${accentColor}cc` : 'rgba(0, 0, 0, 0.6)' }}
+        className="absolute top-2.5 right-2.5 z-30 p-1.5 rounded-full border border-white/10 hover:scale-110 active:scale-95 transition-all cursor-pointer backdrop-blur-sm shadow-md"
+        title={inWatchlist ? 'Remove from List' : 'Add to List'}
+      >
+        {inWatchlist ? (
+          <Check size={12} className="text-white" />
+        ) : (
+          <Plus size={12} className="text-white" />
+        )}
+      </button>
+
+      {/* Minimal Footer Info (Fades in on hover or shows on focus) */}
+      <div
+        className={`absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent flex flex-col justify-end p-3.5 pointer-events-none transition-opacity duration-300 ${
+          isActive ? 'opacity-100' : 'opacity-0'
+        }`}
+      >
         <h3 className="font-bold text-white text-xs sm:text-sm line-clamp-2 mb-1">
           {title}
         </h3>

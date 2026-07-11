@@ -93,38 +93,68 @@ export async function getPersonDetails(id: number) {
   return fetchFromTMDB<Person>(`/person/${id}`, { append_to_response: 'combined_credits' });
 }
 
-export async function getRecommendedForYou(progressItems: ContinueWatchingItem[]): Promise<MovieOrShow[]> {
-  if (!progressItems || progressItems.length === 0) {
-    const trending = await getTrending('all', 'week');
-    return trending.results || [];
+import { getWatchlist } from './watchlist';
+
+export async function getRecommendationsWithSource(
+  progressItems: ContinueWatchingItem[]
+): Promise<{ results: MovieOrShow[]; sourceTitle: string }> {
+  const watchlist = getWatchlist();
+  const watchlistIds = new Set(watchlist.map(item => item.id));
+  
+  // Fully watched is progress >= 0.9
+  const fullyWatchedIds = new Set(
+    progressItems
+      .filter(item => item.progress >= 0.9)
+      .map(item => Number(item.tmdbId))
+  );
+  
+  const watchHistory = [...progressItems]
+    .sort((a, b) => b.lastUpdated - a.lastUpdated);
+     
+  // Try to find recommendations for the most recently watched items, filtering out watched/watchlist items
+  for (const item of watchHistory) {
+    try {
+      const res = await fetchFromTMDB<{ results: MovieOrShow[] }>(`/${item.type}/${item.tmdbId}/recommendations`);
+      const recs = res.results || [];
+      
+      const filtered = recs
+        .map(r => ({ ...r, media_type: item.type }))
+        .filter(r => !watchlistIds.has(r.id) && !fullyWatchedIds.has(r.id) && String(r.id) !== item.tmdbId);
+         
+      if (filtered.length > 0) {
+        return {
+          results: filtered,
+          sourceTitle: item.title
+        };
+      }
+    } catch (err) {
+      console.warn(`Failed to fetch recommendations for ${item.type} ${item.tmdbId}`, err);
+    }
   }
   
-  // Sort by lastUpdated descending, get the 3 most recently updated items
-  const recentWatch = [...progressItems]
-    .sort((a, b) => b.lastUpdated - a.lastUpdated)
-    .slice(0, 3);
-    
-  const recommendationPromises = recentWatch.map(item => {
-    return fetchFromTMDB<{ results: MovieOrShow[] }>(`/${item.type}/${item.tmdbId}/recommendations`)
-      .then(res => res.results.map(r => ({ ...r, media_type: item.type })))
-      .catch(() => [] as MovieOrShow[]);
-  });
-  
-  const resultsArray = await Promise.all(recommendationPromises);
-  const combined = resultsArray.flat();
-  
-  // Deduplicate
-  const seen = new Set<number>();
-  const deduped = combined.filter(item => {
-    if (seen.has(item.id)) return false;
-    seen.add(item.id);
-    return true;
-  });
-  
-  if (deduped.length === 0) {
-    const trending = await getTrending('all', 'week');
-    return trending.results || [];
-  }
-  
-  return deduped;
+  // Fallback to trending
+  const trending = await getTrending('all', 'week');
+  const trendingResults = (trending.results || [])
+    .filter(r => !watchlistIds.has(r.id) && !fullyWatchedIds.has(r.id));
+     
+  return {
+    results: trendingResults,
+    sourceTitle: ''
+  };
+}
+
+export async function getMovieGenres() {
+  return fetchFromTMDB<{ genres: { id: number; name: string }[] }>('/genre/movie/list');
+}
+
+export async function getTVGenres() {
+  return fetchFromTMDB<{ genres: { id: number; name: string }[] }>('/genre/tv/list');
+}
+
+export async function discoverMedia(type: 'movie' | 'tv', genreId: string) {
+  return fetchFromTMDB<{ results: MovieOrShow[] }>(`/discover/${type}`, { with_genres: genreId });
+}
+
+export async function getMediaVideos(id: number, type: 'movie' | 'tv') {
+  return fetchFromTMDB<{ results: { key: string; site: string; type: string }[] }>(`/${type}/${id}/videos`);
 }

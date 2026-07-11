@@ -1,26 +1,40 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Play, Calendar, Star, Info, ListVideo } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { ArrowLeft, Star, Calendar, Info, ListVideo, Play } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { MovieOrShow, CastMember, Episode, Season } from '../types';
 import {
   getMovieDetails,
   getTVDetails,
   getTVSeason,
-  getBackdropUrl,
 } from '../lib/tmdb';
-import { getVidLinkUrl, getEmbedUrl, setupVidLinkMessageListener } from '../lib/vidlink';
+import { getEmbedUrl, setupVidLinkMessageListener } from '../lib/vidlink';
 import { CastCard } from '../components/CastCard';
 import { SeasonEpisodeSelector } from '../components/SeasonEpisodeSelector';
 import { EpisodeGrid } from '../components/EpisodeGrid';
-import { PosterCarousel } from '../components/PosterCarousel';
 import { PosterCard } from '../components/PosterCard';
+
+type ServerType = 'vidlink' | 'vidsrc' | 'superembed';
+
+const SERVER_ROTATION: Record<ServerType, ServerType> = {
+  vidlink: 'vidsrc',
+  vidsrc: 'superembed',
+  superembed: 'vidlink'
+};
+
+const SERVER_NAMES: Record<ServerType, string> = {
+  vidlink: 'Server 1 (VidLink)',
+  vidsrc: 'Server 2 (VidSrc)',
+  superembed: 'Server 3 (SuperEmbed)',
+};
 
 export const Player: React.FC = () => {
   const { type, tmdbId } = useParams<{ type: string; tmdbId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [selectedServer, setSelectedServer] = useState<'vidlink' | 'vidsrc' | 'superembed'>('vidlink');
+  
+  const [selectedServer, setSelectedServer] = useState<ServerType>('vidlink');
+  const [toast, setToast] = useState<string | null>(null);
 
   // Route parameters parsing
   const mediaId = Number(tmdbId);
@@ -41,6 +55,10 @@ export const Player: React.FC = () => {
   const [tvEpisodes, setTvEpisodes] = useState<Episode[]>([]);
   const [episodesLoading, setEpisodesLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'episodes' | 'more'>('overview');
+
+  // Fallback and loading timer refs
+  const fallbackTimeoutRef = useRef<any>(null);
+  const isLoadedRef = useRef(false);
 
   // Ref to hold current details for postMessage callback
   const activeStateRef = useRef({
@@ -65,6 +83,18 @@ export const Player: React.FC = () => {
       episode: mediaType === 'tv' ? episode : undefined,
     };
   }, [media, type, tmdbId, season, episode]);
+
+  // Load server preference on mount or title change
+  useEffect(() => {
+    if (!tmdbId) return;
+    try {
+      const prefs = JSON.parse(localStorage.getItem('aetherServerPrefs') || '{}');
+      const preferred = prefs[String(tmdbId)] || prefs.globalPreferred || 'vidlink';
+      setSelectedServer(preferred as ServerType);
+    } catch (e) {
+      console.error('Error loading server preference:', e);
+    }
+  }, [tmdbId]);
 
   // Load details
   useEffect(() => {
@@ -128,7 +158,7 @@ export const Player: React.FC = () => {
     fetchEpisodes();
   }, [season, tmdbId, mediaType]);
 
-  // Setup VidLink postMessage Listeners
+  // Setup VidLink progress postMessage listeners
   useEffect(() => {
     const getter = () => {
       if (!media) return null;
@@ -139,7 +169,76 @@ export const Player: React.FC = () => {
     return () => cleanup();
   }, [media]);
 
-  const handleEpisodeSelect = (episodeNumber: number, _episodeName: string) => {
+  // Toast Auto-Dismissal
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  // Server Rotation Logic (Trigger Fallback)
+  const triggerFallback = () => {
+    const nextServer = SERVER_ROTATION[selectedServer];
+    setToast(`Connection issues. Switching to ${SERVER_NAMES[nextServer]}...`);
+    setSelectedServer(nextServer);
+  };
+
+  // Start Fallback load timer
+  useEffect(() => {
+    isLoadedRef.current = false;
+    
+    if (fallbackTimeoutRef.current) {
+      clearTimeout(fallbackTimeoutRef.current);
+    }
+
+    // Set a 7.5s loader timeout
+    fallbackTimeoutRef.current = setTimeout(() => {
+      if (!isLoadedRef.current) {
+        console.warn(`Server ${selectedServer} failed to trigger onLoad within 7.5 seconds. Falling back...`);
+        triggerFallback();
+      }
+    }, 7500);
+
+    return () => {
+      if (fallbackTimeoutRef.current) {
+        clearTimeout(fallbackTimeoutRef.current);
+      }
+    };
+  }, [selectedServer, tmdbId, season, episode]);
+
+  // Same-Origin Fallback message listener
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'IFRAME_FALLBACK_TRIGGERED') {
+        console.warn('Iframe fallback redirect caught via message. Advancing server...');
+        triggerFallback();
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [selectedServer]);
+
+  // Handle successful iframe loading
+  const handleIframeLoad = () => {
+    isLoadedRef.current = true;
+    if (fallbackTimeoutRef.current) {
+      clearTimeout(fallbackTimeoutRef.current);
+      fallbackTimeoutRef.current = null;
+    }
+    
+    // Save successful server preference
+    try {
+      const prefs = JSON.parse(localStorage.getItem('aetherServerPrefs') || '{}');
+      prefs[String(tmdbId)] = selectedServer;
+      prefs.globalPreferred = selectedServer;
+      localStorage.setItem('aetherServerPrefs', JSON.stringify(prefs));
+    } catch (e) {
+      console.error('Error saving server preference:', e);
+    }
+  };
+
+  const handleEpisodeSelect = (episodeNumber: number) => {
     setSearchParams({
       season: String(season),
       episode: String(episodeNumber),
@@ -153,7 +252,8 @@ export const Player: React.FC = () => {
     });
   };
 
-  const playUrl = getEmbedUrl(
+  // Base play url with local fallback page appended for VidLink redirect detection
+  const basePlayUrl = getEmbedUrl(
     selectedServer,
     String(tmdbId),
     mediaType,
@@ -161,6 +261,11 @@ export const Player: React.FC = () => {
     mediaType === 'tv' ? episode : undefined,
     startAt
   );
+
+  // If using VidLink, append fallback_url redirect param
+  const playUrl = selectedServer === 'vidlink'
+    ? `${basePlayUrl}&fallback_url=${encodeURIComponent(window.location.origin + '/iframe-fallback.html')}`
+    : basePlayUrl;
 
   const title = media?.title || media?.name || media?.original_title || 'Media Player';
   const releaseDate = media?.release_date || media?.first_air_date;
@@ -175,6 +280,21 @@ export const Player: React.FC = () => {
       transition={{ duration: 0.4 }}
       className="min-h-screen bg-bg-dark text-white pt-20 px-4 md:px-8 lg:px-12 pb-16 text-left"
     >
+      {/* Toast Alert */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className="fixed top-24 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl bg-brand text-white text-xs font-bold shadow-2xl border border-white/10 flex items-center gap-2"
+          >
+            <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+            <span>{toast}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="max-w-[1400px] mx-auto flex flex-col gap-6">
         
         {/* Back navigation */}
@@ -190,12 +310,13 @@ export const Player: React.FC = () => {
         <div className="relative w-full aspect-video rounded-2xl bg-black border border-white/5 shadow-2xl overflow-hidden">
           <iframe
             src={playUrl}
+            onLoad={handleIframeLoad}
             className="absolute inset-0 w-full h-full"
             frameBorder="0"
             allowFullScreen
             allow="autoplay; encrypted-media; picture-in-picture"
             title={`${title} Player`}
-            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+            sandbox="allow-scripts allow-same-origin allow-presentation"
           />
         </div>
 
@@ -203,25 +324,23 @@ export const Player: React.FC = () => {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-surface-dark/50 border border-white/5 shadow-md">
           <div className="flex items-center gap-3">
             <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Select Server:</span>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {(['vidlink', 'vidsrc', 'superembed'] as const).map((srv) => {
                 const isActive = selectedServer === srv;
-                const nameMap = {
-                  vidlink: 'Server 1 (VidLink)',
-                  vidsrc: 'Server 2 (VidSrc)',
-                  superembed: 'Server 3 (SuperEmbed)',
-                };
                 return (
                   <button
                     key={srv}
-                    onClick={() => setSelectedServer(srv)}
+                    onClick={() => {
+                      setToast(`Switching to ${SERVER_NAMES[srv]}...`);
+                      setSelectedServer(srv);
+                    }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer ${
                       isActive
                         ? 'bg-brand text-white shadow-md shadow-brand/10'
                         : 'bg-card-dark text-gray-300 hover:bg-white/5 hover:text-white'
                     }`}
                   >
-                    {nameMap[srv]}
+                    {SERVER_NAMES[srv]}
                   </button>
                 );
               })}
@@ -268,7 +387,7 @@ export const Player: React.FC = () => {
             </div>
           </div>
 
-          {/* Netflix Style Immersive Tabs Selector */}
+          {/* Tab Selector */}
           <div className="flex border-b border-white/5 text-sm font-bold select-none gap-6">
             {mediaType === 'tv' && (
               <button
@@ -324,9 +443,9 @@ export const Player: React.FC = () => {
                 
                 <EpisodeGrid
                   episodes={tvEpisodes}
-                  selectedEpisode={episode}
-                  onEpisodeSelect={handleEpisodeSelect}
                   isLoading={episodesLoading}
+                  onPlayEpisode={handleEpisodeSelect}
+                  currentEpisodeNumber={episode}
                 />
               </div>
             )}
@@ -368,7 +487,7 @@ export const Player: React.FC = () => {
                   {media.tagline && (
                     <div className="flex flex-col gap-1 mt-2">
                       <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Tagline</span>
-                      <span className="text-gray-300 italic">"{media.tagline}"</span>
+                      <span className="text-gray-300 italic font-medium">"{media.tagline}"</span>
                     </div>
                   )}
                 </div>

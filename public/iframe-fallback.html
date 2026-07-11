@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Iframe Fallback</title>
+</head>
+<body style="background: #07070a; color: #a0a5b1; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0;">
+  <div style="text-align: center;">
+    <p>Stream failed to load. Redirecting to backup server...</p>
+  </div>
+  <script>
+    // Send message to parent window to trigger fallback to the next server
+    window.parent.postMessage({ type: 'IFRAME_FALLBACK_TRIGGERED' }, '*');
+  </script>
+</body>
+</html>
