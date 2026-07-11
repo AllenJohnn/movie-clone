@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Star, Calendar, Info, ListVideo, Play } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -48,8 +48,6 @@ export const Player: React.FC = () => {
   const [media, setMedia] = useState<(MovieOrShow & { seasons?: Season[] }) | null>(null);
   const [cast, setCast] = useState<CastMember[]>([]);
   const [similar, setSimilar] = useState<MovieOrShow[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // TV states
   const [tvEpisodes, setTvEpisodes] = useState<Episode[]>([]);
@@ -82,7 +80,7 @@ export const Player: React.FC = () => {
       season: mediaType === 'tv' ? season : undefined,
       episode: mediaType === 'tv' ? episode : undefined,
     };
-  }, [media, type, tmdbId, season, episode]);
+  }, [media, type, tmdbId, season, episode, mediaType]);
 
   // Load server preference on mount or title change
   useEffect(() => {
@@ -96,14 +94,19 @@ export const Player: React.FC = () => {
     }
   }, [tmdbId]);
 
+  // Server Rotation Logic (Trigger Fallback)
+  const triggerFallback = useCallback(() => {
+    const nextServer = SERVER_ROTATION[selectedServer];
+    setToast(`Connection issues. Switching to ${SERVER_NAMES[nextServer]}...`);
+    setSelectedServer(nextServer);
+  }, [selectedServer]);
+
   // Load details
   useEffect(() => {
     const loadMediaDetails = async () => {
       if (isNaN(mediaId)) return;
 
       try {
-        setIsLoading(true);
-        setError(null);
         let data: any;
 
         if (mediaType === 'movie') {
@@ -130,14 +133,11 @@ export const Player: React.FC = () => {
 
       } catch (err) {
         console.error('Error fetching details in player:', err);
-        setError('Failed to fetch details. The video will still play if the ID is valid.');
-      } finally {
-        setIsLoading(false);
       }
     };
 
     loadMediaDetails();
-  }, [type, tmdbId]);
+  }, [type, tmdbId, mediaId, mediaType]);
 
   // Fetch episodes (TV only)
   useEffect(() => {
@@ -156,7 +156,7 @@ export const Player: React.FC = () => {
     };
 
     fetchEpisodes();
-  }, [season, tmdbId, mediaType]);
+  }, [season, tmdbId, mediaType, mediaId]);
 
   // Setup VidLink progress postMessage listeners
   useEffect(() => {
@@ -176,13 +176,6 @@ export const Player: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [toast]);
-
-  // Server Rotation Logic (Trigger Fallback)
-  const triggerFallback = () => {
-    const nextServer = SERVER_ROTATION[selectedServer];
-    setToast(`Connection issues. Switching to ${SERVER_NAMES[nextServer]}...`);
-    setSelectedServer(nextServer);
-  };
 
   // Start Fallback load timer
   useEffect(() => {
@@ -205,7 +198,7 @@ export const Player: React.FC = () => {
         clearTimeout(fallbackTimeoutRef.current);
       }
     };
-  }, [selectedServer, tmdbId, season, episode]);
+  }, [selectedServer, tmdbId, season, episode, triggerFallback]);
 
   // Same-Origin Fallback message listener
   useEffect(() => {
@@ -217,7 +210,7 @@ export const Player: React.FC = () => {
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [selectedServer]);
+  }, [selectedServer, triggerFallback]);
 
   // Handle successful iframe loading
   const handleIframeLoad = () => {

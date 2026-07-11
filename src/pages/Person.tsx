@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { User, Calendar, MapPin, Film, ArrowLeft } from 'lucide-react';
+import { User, Calendar, MapPin, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Person as PersonType, MovieOrShow } from '../types';
 import { getPersonDetails, getProfileUrl } from '../lib/tmdb';
@@ -45,7 +45,7 @@ export const Person: React.FC = () => {
 
     fetchPerson();
     window.scrollTo({ top: 0, behavior: 'instant' as any });
-  }, [id]);
+  }, [id, personId]);
 
   if (isLoading) {
     return (

@@ -96,7 +96,7 @@ export function getCachedColor(cacheKey: string): string {
   try {
     const cache = JSON.parse(localStorage.getItem('aetherMediaColors') || '{}');
     return cache[cacheKey] || '#e50914';
-  } catch (e) {
+  } catch {
     return '#e50914';
   }
 }

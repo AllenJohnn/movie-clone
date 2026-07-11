@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { MovieOrShow } from '../types';
@@ -36,7 +36,7 @@ export const Home: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -123,11 +123,11 @@ export const Home: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [filter, genreId]);
 
   useEffect(() => {
     loadData();
-  }, [refreshKey, filter, genreId]);
+  }, [refreshKey, loadData]);
 
   const handlePlayHero = () => {
     if (!heroMedia) return;

@@ -1,4 +1,4 @@
-import { MovieOrShow, Person, Season, ContinueWatchingItem } from '../types';
+import { MovieOrShow, Person, ContinueWatchingItem } from '../types';
 
 const cache = new Map<string, { data: any; expiry: number }>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache

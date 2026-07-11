@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Play, Star, Calendar, Clock, Film, ChevronRight, User, Plus, Check } from 'lucide-react';
+import { Play, Star, Calendar, Clock, Film, User, Plus, Check } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { MovieOrShow, CastMember, CrewMember, Episode, Season } from '../types';
 import {

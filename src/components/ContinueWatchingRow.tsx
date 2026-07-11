@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Play, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -47,13 +47,13 @@ export const ContinueWatchingRow: React.FC<ContinueWatchingRowProps> = ({ filter
   const [items, setItems] = useState<ContinueWatchingItem[]>([]);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
-  const loadItems = () => {
+  const loadItems = useCallback(() => {
     const list = getContinueWatchingList();
     const filtered = filter ? list.filter(item => item.type === filter) : list;
     // Sort by lastUpdated desc
     const sorted = filtered.sort((a, b) => b.lastUpdated - a.lastUpdated);
     setItems(sorted);
-  };
+  }, [filter]);
 
   useEffect(() => {
     loadItems();
@@ -67,7 +67,7 @@ export const ContinueWatchingRow: React.FC<ContinueWatchingRowProps> = ({ filter
     
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [filter]);
+  }, [filter, loadItems]);
 
   const handleRemove = (e: React.MouseEvent, tmdbId: string, type: 'movie' | 'tv') => {
     e.stopPropagation();
